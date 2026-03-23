@@ -292,7 +292,7 @@ function HeaderLogo() {
   }
   return (
     <img
-      src="/stack_weeks_logo.png"
+      src="/stack_weeks_logo_transparent.png"
       style={{ height: 22, width: 'auto' }}
       alt="Stack Weeks"
       onError={() => setImgError(true)}
