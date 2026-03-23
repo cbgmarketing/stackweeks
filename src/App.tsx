@@ -281,6 +281,25 @@ const inputStyle: React.CSSProperties = {
 
 // ─── App Component ───────────────────────────────────────────────────────────
 
+function HeaderLogo() {
+  const [imgError, setImgError] = useState(false)
+  if (imgError) {
+    return (
+      <span style={{ fontSize: 15, fontWeight: 800, color: COLORS.white, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>
+        stack weeks
+      </span>
+    )
+  }
+  return (
+    <img
+      src="/stack_weeks_logo.png"
+      style={{ height: 22, width: 'auto' }}
+      alt="Stack Weeks"
+      onError={() => setImgError(true)}
+    />
+  )
+}
+
 export default function App() {
   const [tab, setTab] = useState<'today' | 'workout' | 'nutrition' | 'progress' | 'plan'>('today')
   const [data, setData] = useState<AppData>(loadData)
@@ -297,18 +316,26 @@ export default function App() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', fontFamily: FONT, background: COLORS.bg }}>
       {/* Header */}
-      <div style={{
-        padding: '12px 16px 8px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: COLORS.bg,
-        borderBottom: `1px solid ${COLORS.mist}`,
-        flexShrink: 0,
-      }}>
-        <img src="/stack_weeks_logo_transparent.png" style={{ height: 22, width: 'auto' }} alt="Stack Weeks" />
-        <div style={{ fontSize: 12, color: COLORS.slate, fontWeight: 600 }}>
-          Day {getDayNumber()} / {TOTAL_DAYS} — Phase {getPhase().phase}
+      <div style={{ background: COLORS.primary, flexShrink: 0 }}>
+        <div style={{
+          padding: '12px 16px 10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <HeaderLogo />
+          <div style={{ fontSize: 12, color: COLORS.gold, fontWeight: 700, letterSpacing: 0.3 }}>
+            Day {getDayNumber()} / {TOTAL_DAYS} — Phase {getPhase().phase}
+          </div>
+        </div>
+        {/* Gold progress bar */}
+        <div style={{ height: 3, background: `${COLORS.gold}40` }}>
+          <div style={{
+            height: '100%',
+            width: `${(getDayNumber() / TOTAL_DAYS) * 100}%`,
+            background: COLORS.gold,
+            transition: 'width 0.5s',
+          }} />
         </div>
       </div>
 
