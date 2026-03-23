@@ -86,12 +86,14 @@ const HABITS: HabitDef[] = [
 
 const WORKOUT_DAYS: WorkoutDay[] = [
   {
-    day: 'Monday', title: 'Push (Chest & Triceps)', exercises: [
+    day: 'Monday', title: 'Chest hypertrophy · Triceps support · Core day 1 of 3', exercises: [
+      { name: 'Push-Up Warm-Up', sets: '2×15–20', rest: '—', note: 'Warm up before pressing. Full ROM.' },
       { name: 'Incline DB Bench Press', sets: '4×6–10', rest: '2.5–4 min', note: 'Primary compound. Elbows 60–75° from torso.' },
       { name: 'Pec Deck Machine Flys', sets: '3×10–12', rest: '60–90 sec', note: 'Full ROM, constant tension.' },
       { name: 'Single-Arm DB Floor Press', sets: '3×10–12 each', rest: '60–90 sec', note: 'Limited ROM protects the labrum.' },
       { name: 'Cable Triceps Rope Pushdown', sets: '3×10–12', rest: '60–90 sec', note: 'Elbows fixed at sides.' },
-      { name: 'Cable OH Triceps Extension', sets: '3×12–15', rest: '60 sec', note: 'Stop if shoulder discomfort.' },
+      { name: 'DB Skull Crushers', sets: '3×12–15', rest: '60 sec', note: 'Floor or flat bench. Lower slowly to temples, press straight up.' },
+      { name: 'Ab Circuit (3 rounds)', sets: 'Plank 45–60s / Leg Raises 12–15 / Crunches 15–20', rest: '—' },
     ]
   },
   {
@@ -105,7 +107,7 @@ const WORKOUT_DAYS: WorkoutDay[] = [
     ]
   },
   {
-    day: 'Wednesday', title: 'Shoulders, PT & Conditioning', exercises: [
+    day: 'Wednesday', title: 'Shoulders, PT & Conditioning · Core day 2 of 3', exercises: [
       { name: 'Physical Therapy', sets: '10–15 min', rest: '—', note: 'NON-NEGOTIABLE. Always first.' },
       { name: 'Ab Circuit (3 rounds)', sets: 'Plank 30–60s / Leg Raises 12–15 / Crunches 15–20', rest: '—' },
       { name: 'Cable Lateral Raises', sets: '4×12–15', rest: '60–90 sec', note: 'Slight forward lean. +2.5 lbs only.' },
@@ -117,12 +119,13 @@ const WORKOUT_DAYS: WorkoutDay[] = [
     ]
   },
   {
-    day: 'Thursday', title: 'Pull (Back & Biceps)', exercises: [
+    day: 'Thursday', title: 'Pull (Back & Biceps) · Core day 3 of 3', exercises: [
       { name: 'One-Arm DB Row', sets: '4×8–12 each', rest: '2.5–3 min' },
       { name: 'Seated Cable Row Close Grip', sets: '3×8–12', rest: '2–3 min' },
       { name: 'Lat Pulldown Wide Grip', sets: '3×10–12', rest: '2 min', note: 'Builds V-taper.' },
       { name: 'Barbell Curl 90/90/180 Method', sets: '3×8–10', rest: '90 sec' },
       { name: 'Incline DB Curl', sets: '3×10–12', rest: '60–90 sec', note: 'Priority biceps movement.' },
+      { name: 'Ab Circuit (3 rounds)', sets: 'Plank 45–60s / Leg Raises 12–15 / Crunches 15–20', rest: '—' },
     ]
   },
   {
