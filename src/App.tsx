@@ -160,12 +160,19 @@ const MEALS = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function getLocalDateKey(date: Date = new Date()): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 function dateStr(d: Date): string {
-  return d.toISOString().split('T')[0]
+  return getLocalDateKey(d)
 }
 
 function today(): string {
-  return dateStr(new Date())
+  return getLocalDateKey()
 }
 
 function getDayNumber(): number {
@@ -404,6 +411,14 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
   const pct = Math.round((completedCount / HABITS.length) * 100)
   const weekDates = getWeekDates(selectedDate)
   const dayName = getDayOfWeekName(selectedDate)
+  const todayKey = today()
+
+  // Rolling last-7-days strip (today + 6 prior days), clamped to challenge start
+  const chipDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    return getLocalDateKey(d)
+  }).filter(d => d >= START_DATE && d <= todayKey)
 
   const toggleHabit = (habitId: string) => {
     updateData(prev => {
@@ -419,43 +434,68 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
 
   return (
     <div>
-      {/* Date selector */}
-      <div style={{ display: 'flex', gap: 4, padding: '12px 0 8px', justifyContent: 'center' }}>
-        {weekDates.map(d => {
-          const dd = new Date(d + 'T12:00:00')
-          const dayLabel = dd.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)
-          const dateNum = dd.getDate()
-          const isSelected = d === selectedDate
-          const dayData = data.habits[d] || {}
-          const dayCompleted = HABITS.filter(h => dayData[h.id]).length
-          const dayPct = dayCompleted / HABITS.length
-          return (
-            <button
-              key={d}
-              onClick={() => setSelectedDate(d)}
-              style={{
-                width: 42,
-                padding: '6px 0',
-                borderRadius: 12,
-                border: isSelected ? `2px solid ${COLORS.primary}` : '2px solid transparent',
-                background: isSelected ? COLORS.primary : dayPct >= 0.7 ? `${COLORS.gold}20` : COLORS.stone,
-                color: isSelected ? COLORS.white : COLORS.ink,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-                fontFamily: FONT,
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              <span style={{ fontSize: 10, opacity: 0.7 }}>{dayLabel}</span>
-              <span>{dateNum}</span>
-              {dayPct >= 0.7 && !isSelected && <span style={{ fontSize: 8 }}>✓</span>}
-            </button>
-          )
-        })}
+      {/* Date selector — last 7 days, scrollable */}
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as unknown as undefined }}>
+        <div style={{ display: 'flex', gap: 6, padding: '12px 16px 8px', minWidth: 'max-content' }}>
+          {chipDates.map(d => {
+            const dd = new Date(d + 'T12:00:00')
+            const dayLabel = dd.toLocaleDateString('en-US', { weekday: 'short' })
+            const dateNum = dd.getDate()
+            const isToday = d === todayKey
+            const isSelected = d === selectedDate
+            const dayData = data.habits[d] || {}
+            const dayCompleted = HABITS.filter(h => dayData[h.id]).length
+            const dayPct = dayCompleted / HABITS.length
+            const isFullyDone = dayPct === 1
+            const isPartial = dayPct > 0 && dayPct < 1
+
+            return (
+              <button
+                key={d}
+                onClick={() => setSelectedDate(d)}
+                style={{
+                  width: 48,
+                  padding: '7px 0',
+                  borderRadius: 14,
+                  border: isSelected
+                    ? `2px solid ${COLORS.primary}`
+                    : isFullyDone && !isToday
+                    ? `2px solid ${COLORS.gold}`
+                    : '2px solid transparent',
+                  background: isSelected
+                    ? COLORS.primary
+                    : isFullyDone && !isToday
+                    ? `${COLORS.gold}18`
+                    : COLORS.stone,
+                  color: isSelected ? COLORS.white : COLORS.ink,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 2,
+                  fontFamily: FONT,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontSize: 10, opacity: isSelected ? 0.85 : 0.6, fontWeight: 500 }}>{dayLabel}</span>
+                <span>{dateNum}</span>
+                {isFullyDone && !isSelected && (
+                  <span style={{ fontSize: 9, color: COLORS.gold, fontWeight: 700 }}>✓</span>
+                )}
+                {isPartial && !isSelected && (
+                  <span style={{ fontSize: 8, color: COLORS.slate, fontWeight: 600 }}>
+                    {Math.round(dayPct * 100)}%
+                  </span>
+                )}
+                {!isFullyDone && !isPartial && !isSelected && (
+                  <span style={{ fontSize: 8, color: 'transparent' }}>—</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Day heading */}
