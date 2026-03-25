@@ -20,6 +20,13 @@ const COLORS = {
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif"
 
+// ─── Change 5a: Periodic habit IDs ───────────────────────────────────────────
+const PERIODIC_HABIT_IDS = ['meal_prep', 'progress', 'cortisol', 'therapy']
+
+// ─── Change 6a: Weighted habits ──────────────────────────────────────────────
+const HIGH_PRIORITY_HABIT_IDS = ['workout', 'macros', 'water', 'no_alcohol', 'no_sex']
+const HABIT_WEIGHT = (id: string): number => HIGH_PRIORITY_HABIT_IDS.includes(id) ? 3 : 1
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface HabitDef {
@@ -80,6 +87,10 @@ const HABITS: HabitDef[] = [
   { id: 'skin', label: 'Skin Routine', desc: 'AM + PM routine complete', emoji: '✨', category: 'RECOVERY' },
   { id: 'invisalign', label: 'Invisalign', desc: 'Worn today — log before bed', emoji: '🦷', category: 'RECOVERY' },
   { id: 'weekly_check', label: 'Weekly Progress Check', desc: 'Photo, weight, body fat', emoji: '📸', category: 'TRACKING' },
+  // Periodic habits (Change 5 additions — biweekly and monthly)
+  { id: 'progress', label: 'Weekly Progress Check', desc: 'Weekly — photo, weight, BF', emoji: '📊', category: 'TRACKING' },
+  { id: 'cortisol', label: 'Cortisol Protocol', desc: 'Monthly — stress check-in', emoji: '🧠', category: 'MINDSET' },
+  { id: 'therapy', label: 'Therapy Session', desc: 'Biweekly — log when done', emoji: '💬', category: 'MINDSET' },
 ]
 
 // ─── Workout Program ─────────────────────────────────────────────────────────
@@ -211,6 +222,14 @@ function getDayOfWeekName(dateString: string): string {
   return new Date(dateString + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' })
 }
 
+// ─── Change 6b: Weighted completion % calculation ────────────────────────────
+function getWeightedPct(habitsForDay: Record<string, boolean>): number {
+  const dailyHabits = HABITS.filter(h => !PERIODIC_HABIT_IDS.includes(h.id))
+  const totalWeight = dailyHabits.reduce((sum, h) => sum + HABIT_WEIGHT(h.id), 0)
+  const doneWeight = dailyHabits.filter(h => habitsForDay?.[h.id]).reduce((sum, h) => sum + HABIT_WEIGHT(h.id), 0)
+  return totalWeight > 0 ? Math.round((doneWeight / totalWeight) * 100) : 0
+}
+
 const EMPTY_DATA: AppData = { habits: {}, workoutLogs: {}, weeklyLogs: [], nutritionLogs: {} }
 
 function loadData(): AppData {
@@ -228,21 +247,19 @@ function saveData(data: AppData) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
+// ─── Change 5c + Change 6d: Streak using daily-only weighted % ───────────────
 function getStreak(data: AppData): number {
   let streak = 0
   const d = new Date(today())
-  // Start from yesterday if today isn't complete yet
   const todayHabits = data.habits[today()] || {}
-  const todayCount = HABITS.filter(h => todayHabits[h.id]).length
-  const todayPct = todayCount / HABITS.length
-  if (todayPct < 0.7) d.setDate(d.getDate() - 1)
+  const todayPct = getWeightedPct(todayHabits)
+  if (todayPct < 70) d.setDate(d.getDate() - 1)
 
   while (true) {
     const ds = dateStr(d)
     if (ds < START_DATE) break
     const habits = data.habits[ds] || {}
-    const completed = HABITS.filter(h => habits[h.id]).length
-    if (completed / HABITS.length >= 0.7) {
+    if (getWeightedPct(habits) >= 70) {
       streak++
       d.setDate(d.getDate() - 1)
     } else {
@@ -407,8 +424,10 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
   selectedDate: string; setSelectedDate: (d: string) => void
 }) {
   const dayHabits = data.habits[selectedDate] || {}
-  const completedCount = HABITS.filter(h => dayHabits[h.id]).length
-  const pct = Math.round((completedCount / HABITS.length) * 100)
+  // Change 6b: Use weighted pct for daily habits only
+  const dailyHabits = HABITS.filter(h => !PERIODIC_HABIT_IDS.includes(h.id))
+  const pct = getWeightedPct(dayHabits)
+  const completedCount = dailyHabits.filter(h => dayHabits[h.id]).length
   const weekDates = getWeekDates(selectedDate)
   const dayName = getDayOfWeekName(selectedDate)
   const todayKey = today()
@@ -430,7 +449,56 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
     })
   }
 
-  const categories = [...new Set(HABITS.map(h => h.category))]
+  // Change 5d: Separate periodic from regular habits for categories
+  const regularHabits = HABITS.filter(h => !PERIODIC_HABIT_IDS.includes(h.id))
+  const periodicHabits = HABITS.filter(h => PERIODIC_HABIT_IDS.includes(h.id))
+  const categories = [...new Set(regularHabits.map(h => h.category))]
+
+  // Change 5e: Status helpers for periodic habits
+  const getPeriodicStatus = (habitId: string): { done: boolean; label: string } => {
+    // weekly: meal_prep, progress — check Mon–Sun week of selectedDate
+    if (habitId === 'meal_prep' || habitId === 'progress') {
+      const weekDays = getWeekDates(selectedDate)
+      const done = weekDays.some(wd => data.habits[wd]?.[habitId])
+      return {
+        done,
+        label: done ? 'Done this week ✓' : 'Not yet this week',
+      }
+    }
+    // monthly: cortisol
+    if (habitId === 'cortisol') {
+      const d = new Date(selectedDate + 'T12:00:00')
+      const year = d.getFullYear()
+      const month = d.getMonth()
+      const done = Object.keys(data.habits).some(dateKey => {
+        const dd = new Date(dateKey + 'T12:00:00')
+        return dd.getFullYear() === year && dd.getMonth() === month && data.habits[dateKey]?.[habitId]
+      })
+      return {
+        done,
+        label: done ? 'Done this month ✓' : 'Not yet this month',
+      }
+    }
+    // biweekly: therapy — 14-day windows from START_DATE
+    if (habitId === 'therapy') {
+      const startMs = new Date(START_DATE + 'T12:00:00').getTime()
+      const selMs = new Date(selectedDate + 'T12:00:00').getTime()
+      const daysSinceStart = Math.floor((selMs - startMs) / 86400000)
+      const windowIndex = Math.floor(daysSinceStart / 14)
+      const windowStart = new Date(startMs + windowIndex * 14 * 86400000)
+      const windowEnd = new Date(startMs + (windowIndex + 1) * 14 * 86400000)
+      const wsKey = getLocalDateKey(windowStart)
+      const weKey = getLocalDateKey(windowEnd)
+      const done = Object.keys(data.habits).some(dateKey => {
+        return dateKey >= wsKey && dateKey < weKey && data.habits[dateKey]?.[habitId]
+      })
+      return {
+        done,
+        label: done ? 'Done this period ✓' : 'Not yet this period',
+      }
+    }
+    return { done: false, label: 'Not yet' }
+  }
 
   return (
     <div>
@@ -444,10 +512,10 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
             const isToday = d === todayKey
             const isSelected = d === selectedDate
             const dayData = data.habits[d] || {}
-            const dayCompleted = HABITS.filter(h => dayData[h.id]).length
-            const dayPct = dayCompleted / HABITS.length
-            const isFullyDone = dayPct === 1
-            const isPartial = dayPct > 0 && dayPct < 1
+            const dayPctVal = getWeightedPct(dayData)
+            const dayDailyCount = dailyHabits.filter(h => dayData[h.id]).length
+            const isFullyDone = dayDailyCount === dailyHabits.length && dailyHabits.length > 0
+            const isPartial = dayDailyCount > 0 && !isFullyDone
 
             return (
               <button
@@ -486,7 +554,7 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
                 )}
                 {isPartial && !isSelected && (
                   <span style={{ fontSize: 8, color: COLORS.slate, fontWeight: 600 }}>
-                    {Math.round(dayPct * 100)}%
+                    {dayPctVal}%
                   </span>
                 )}
                 {!isFullyDone && !isPartial && !isSelected && (
@@ -501,7 +569,7 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
       {/* Day heading */}
       <div style={{ textAlign: 'center', marginBottom: 12 }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.ink }}>{dayName}</div>
-        <div style={{ fontSize: 13, color: COLORS.slate }}>{completedCount}/{HABITS.length} habits — {pct}%</div>
+        <div style={{ fontSize: 13, color: COLORS.slate }}>{completedCount}/{dailyHabits.length} habits — {pct}%</div>
         {/* Progress bar */}
         <div style={{ height: 6, borderRadius: 3, background: COLORS.mist, marginTop: 8, overflow: 'hidden' }}>
           <div style={{
@@ -514,11 +582,11 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
         </div>
       </div>
 
-      {/* Habits by category */}
+      {/* Habits by category — Change 5d: exclude periodic habits */}
       {categories.map(cat => (
         <div key={cat}>
           <div style={sectionTitleStyle}>{cat}</div>
-          {HABITS.filter(h => h.category === cat).map(habit => {
+          {regularHabits.filter(h => h.category === cat).map(habit => {
             const checked = !!dayHabits[habit.id]
             const hasTwoPronged = !!habit.weeklyTarget
             let weeklyCount = 0
@@ -528,6 +596,8 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
                 if (dd[habit.id]) weeklyCount++
               })
             }
+            // Change 6c: show gold star for high-priority habits
+            const isHighPriority = HIGH_PRIORITY_HABIT_IDS.includes(habit.id)
             return (
               <div
                 key={habit.id}
@@ -553,7 +623,10 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
                   {habit.emoji}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{habit.label}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>
+                    {isHighPriority && <span style={{ color: COLORS.gold, marginRight: 4 }}>★</span>}
+                    {habit.label}
+                  </div>
                   <div style={{ fontSize: 12, color: COLORS.slate }}>{habit.desc}</div>
                   {hasTwoPronged && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
@@ -596,6 +669,62 @@ function TodayTab({ data, updateData, selectedDate, setSelectedDate }: {
           })}
         </div>
       ))}
+
+      {/* Change 5d/e: Periodic Goals section */}
+      <div style={sectionTitleStyle}>PERIODIC GOALS</div>
+      {periodicHabits.map(habit => {
+        const checked = !!dayHabits[habit.id]
+        const { done, label } = getPeriodicStatus(habit.id)
+        return (
+          <div
+            key={habit.id}
+            style={{
+              ...cardStyle,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              cursor: 'pointer',
+              background: checked ? `${COLORS.primary}08` : COLORS.white,
+              borderColor: checked ? `${COLORS.primary}30` : COLORS.mist,
+            }}
+          >
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 20,
+              background: checked ? `${COLORS.primary}15` : COLORS.stone,
+            }}>
+              {habit.emoji}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{habit.label}</div>
+              <div style={{ fontSize: 12, color: COLORS.slate }}>{habit.desc}</div>
+              <div style={{
+                marginTop: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                color: done ? '#16a34a' : COLORS.slate,
+              }}>
+                {label}
+              </div>
+            </div>
+            <div
+              onClick={() => toggleHabit(habit.id)}
+              style={{
+                width: 28, height: 28, borderRadius: 8,
+                border: `2px solid ${checked ? COLORS.primary : COLORS.mist}`,
+                background: checked ? COLORS.primary : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+              }}
+            >
+              {checked && <span style={{ color: COLORS.white, fontSize: 14, fontWeight: 700 }}>✓</span>}
+            </div>
+          </div>
+        )
+      })}
+
       <div style={{ height: 20 }} />
     </div>
   )
@@ -608,6 +737,8 @@ function WorkoutTab({ data, updateData }: { data: AppData; updateData: (fn: (p: 
   const todayWorkout = WORKOUT_DAYS.find(w => w.day === dayName)
   const phase = getPhase()
   const [expandedDay, setExpandedDay] = useState<string | null>(dayName)
+
+  // Change 3a: setLog now calls saveData via updateData (which calls saveData internally)
   const setLog = (key: string, value: string) => {
     updateData(prev => {
       const workoutLogs = { ...prev.workoutLogs }
@@ -619,6 +750,29 @@ function WorkoutTab({ data, updateData }: { data: AppData; updateData: (fn: (p: 
   }
 
   const todayLogs = data.workoutLogs[today()] || {}
+
+  // Change 3c: Find previous same-weekday session
+  const getPreviousSession = (exerciseIndex: number): { weight: string; reps: string } | null => {
+    const todayDateKey = today()
+    const todayDow = new Date(todayDateKey + 'T12:00:00').getDay()
+    const allDates = Object.keys(data.workoutLogs).sort().reverse()
+    for (const dateKey of allDates) {
+      if (dateKey >= todayDateKey) continue
+      const dow = new Date(dateKey + 'T12:00:00').getDay()
+      if (dow === todayDow) {
+        const logs = data.workoutLogs[dateKey] || {}
+        const weightKey = `${exerciseIndex}-0-w`
+        const repsKey = `${exerciseIndex}-0-r`
+        const w = logs[weightKey]
+        const r = logs[repsKey]
+        if (w || r) {
+          return { weight: w || '', reps: r || '' }
+        }
+        return null
+      }
+    }
+    return null
+  }
 
   return (
     <div>
@@ -649,44 +803,72 @@ function WorkoutTab({ data, updateData }: { data: AppData; updateData: (fn: (p: 
             <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink, marginBottom: 12 }}>
               {todayWorkout.title}
             </div>
-            {todayWorkout.exercises.map((ex, ei) => (
-              <div key={ei} style={{
-                padding: '10px 0',
-                borderTop: ei > 0 ? `1px solid ${COLORS.mist}` : 'none',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{ei + 1}. {ex.name}</div>
-                    <div style={{ fontSize: 12, color: COLORS.slate }}>{ex.sets} — Rest: {ex.rest}</div>
-                    {ex.note && <div style={{ fontSize: 11, color: COLORS.gold, fontStyle: 'italic', marginTop: 2 }}>{ex.note}</div>}
+            {todayWorkout.exercises.map((ex, ei) => {
+              const prevSession = getPreviousSession(ei)
+              return (
+                <div key={ei} style={{
+                  padding: '10px 0',
+                  borderTop: ei > 0 ? `1px solid ${COLORS.mist}` : 'none',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{ei + 1}. {ex.name}</div>
+                      <div style={{ fontSize: 12, color: COLORS.slate }}>{ex.sets} — Rest: {ex.rest}</div>
+                      {ex.note && <div style={{ fontSize: 11, color: COLORS.gold, fontStyle: 'italic', marginTop: 2 }}>{ex.note}</div>}
+                      {/* Change 3c: Previous session reference */}
+                      {prevSession && (prevSession.weight || prevSession.reps) && (
+                        <div style={{ fontSize: 11, color: COLORS.slate, marginTop: 3, fontStyle: 'italic' }}>
+                          Last time: {prevSession.weight ? `${prevSession.weight} lbs` : '—'} × {prevSession.reps || '—'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Set logging — Change 3a/b */}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    {Array.from({ length: parseInt(ex.sets.charAt(0)) || 3 }).map((_, si) => {
+                      const wKey = `${ei}-${si}-w`
+                      const rKey = `${ei}-${si}-r`
+                      const wVal = todayLogs[wKey] || ''
+                      const rVal = todayLogs[rKey] || ''
+                      const setBothFilled = wVal.trim() !== '' && rVal.trim() !== ''
+                      return (
+                        <div key={si} style={{
+                          display: 'flex',
+                          gap: 4,
+                          alignItems: 'center',
+                          background: setBothFilled ? '#F0FFF4' : 'transparent',
+                          borderRadius: 8,
+                          padding: setBothFilled ? '2px 4px' : '2px 0',
+                          transition: 'background 0.2s',
+                        }}>
+                          <span style={{ fontSize: 10, color: COLORS.slate, width: 16 }}>S{si + 1}</span>
+                          <input
+                            type="number"
+                            placeholder="lbs"
+                            value={wVal}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => setLog(wKey, e.target.value)}
+                            style={{ ...inputStyle, width: 52, padding: '6px 8px', fontSize: 13, textAlign: 'center' }}
+                          />
+                          <input
+                            type="number"
+                            placeholder="reps"
+                            value={rVal}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => setLog(rKey, e.target.value)}
+                            style={{ ...inputStyle, width: 48, padding: '6px 8px', fontSize: 13, textAlign: 'center' }}
+                          />
+                          {/* Change 3b: Green checkmark when both filled */}
+                          {setBothFilled && (
+                            <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700, marginLeft: 2 }}>✓</span>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
-                {/* Set logging */}
-                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                  {Array.from({ length: parseInt(ex.sets.charAt(0)) || 3 }).map((_, si) => (
-                    <div key={si} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: COLORS.slate, width: 16 }}>S{si + 1}</span>
-                      <input
-                        type="number"
-                        placeholder="lbs"
-                        value={todayLogs[`${ei}-${si}-w`] || ''}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => setLog(`${ei}-${si}-w`, e.target.value)}
-                        style={{ ...inputStyle, width: 52, padding: '6px 8px', fontSize: 13, textAlign: 'center' }}
-                      />
-                      <input
-                        type="number"
-                        placeholder="reps"
-                        value={todayLogs[`${ei}-${si}-r`] || ''}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => setLog(`${ei}-${si}-r`, e.target.value)}
-                        style={{ ...inputStyle, width: 48, padding: '6px 8px', fontSize: 13, textAlign: 'center' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -856,6 +1038,142 @@ function NutritionTab({ data, updateData }: { data: AppData; updateData: (fn: (p
   )
 }
 
+// ─── COMPLETION GRAPH (Change 4) ──────────────────────────────────────────────
+
+function CompletionGraph({ data }: { data: AppData }) {
+  const todayKey = today()
+  const BAR_WIDTH = 16
+  const BAR_GAP = 4
+  const CHART_HEIGHT = 120
+  const LABEL_HEIGHT = 28
+  const Y_LABEL_WIDTH = 32
+  const totalWidth = TOTAL_DAYS * (BAR_WIDTH + BAR_GAP) + Y_LABEL_WIDTH
+
+  // Build day entries
+  const entries: { dayNum: number; pct: number; dateKey: string }[] = []
+  for (let i = 1; i <= TOTAL_DAYS; i++) {
+    const d = new Date(START_DATE + 'T12:00:00')
+    d.setDate(d.getDate() + i - 1)
+    const dateKey = getLocalDateKey(d)
+    if (dateKey > todayKey) break
+    const habitsForDay = data.habits[dateKey] || {}
+    const hasAnyEntry = Object.keys(habitsForDay).length > 0
+    if (!hasAnyEntry) continue
+    const pct = getWeightedPct(habitsForDay)
+    entries.push({ dayNum: i, pct, dateKey })
+  }
+
+  return (
+    <div style={{ ...cardStyle, padding: '14px 0 0' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.ink, marginBottom: 10, paddingLeft: 14 }}>
+        Daily Completion
+      </div>
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <svg
+          width={totalWidth}
+          height={CHART_HEIGHT + LABEL_HEIGHT}
+          style={{ display: 'block', minWidth: totalWidth }}
+        >
+          {/* Y-axis labels */}
+          {[0, 50, 100].map(yVal => {
+            const y = CHART_HEIGHT - (yVal / 100) * CHART_HEIGHT
+            return (
+              <g key={yVal}>
+                <text
+                  x={Y_LABEL_WIDTH - 4}
+                  y={y + 4}
+                  textAnchor="end"
+                  fontSize={9}
+                  fill={COLORS.slate}
+                  fontFamily={FONT}
+                >
+                  {yVal}%
+                </text>
+                <line
+                  x1={Y_LABEL_WIDTH}
+                  y1={y}
+                  x2={totalWidth}
+                  y2={y}
+                  stroke={COLORS.mist}
+                  strokeWidth={0.5}
+                />
+              </g>
+            )
+          })}
+
+          {/* 70% dashed line */}
+          {(() => {
+            const y70 = CHART_HEIGHT - (70 / 100) * CHART_HEIGHT
+            return (
+              <line
+                x1={Y_LABEL_WIDTH}
+                y1={y70}
+                x2={totalWidth}
+                y2={y70}
+                stroke={COLORS.gold}
+                strokeWidth={1}
+                strokeDasharray="4 3"
+              />
+            )
+          })()}
+
+          {/* Bars */}
+          {entries.map(({ dayNum, pct, dateKey }) => {
+            const x = Y_LABEL_WIDTH + (dayNum - 1) * (BAR_WIDTH + BAR_GAP)
+            const barH = Math.max(2, (pct / 100) * CHART_HEIGHT)
+            const y = CHART_HEIGHT - barH
+            const isCurrentDay = dateKey === todayKey
+            const barColor = isCurrentDay ? COLORS.gold : COLORS.primary
+
+            // Week label every 7 days
+            const weekLabel = dayNum % 7 === 1 ? `W${Math.ceil(dayNum / 7)}` : null
+
+            return (
+              <g key={dayNum}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={BAR_WIDTH}
+                  height={barH}
+                  fill={barColor}
+                  rx={2}
+                  opacity={0.85}
+                />
+                {weekLabel && (
+                  <text
+                    x={x + BAR_WIDTH / 2}
+                    y={CHART_HEIGHT + 16}
+                    textAnchor="middle"
+                    fontSize={8}
+                    fill={COLORS.slate}
+                    fontFamily={FONT}
+                  >
+                    {weekLabel}
+                  </text>
+                )}
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px 10px', fontSize: 10, color: COLORS.slate }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 10, height: 10, background: COLORS.primary, borderRadius: 2, display: 'inline-block' }} />
+          Logged day
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 10, height: 10, background: COLORS.gold, borderRadius: 2, display: 'inline-block' }} />
+          Today
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 14, height: 0, borderTop: `2px dashed ${COLORS.gold}`, display: 'inline-block' }} />
+          70% threshold
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // ─── PROGRESS TAB ────────────────────────────────────────────────────────────
 
 function ProgressTab({ data, updateData }: { data: AppData; updateData: (fn: (p: AppData) => AppData) => void }) {
@@ -947,6 +1265,9 @@ function ProgressTab({ data, updateData }: { data: AppData; updateData: (fn: (p:
           ≥70% habits completed = streak day
         </div>
       </div>
+
+      {/* Change 4: Completion Graph between streak and progress */}
+      <CompletionGraph data={data} />
 
       {/* Overall progress */}
       <div style={cardStyle}>
