@@ -117,64 +117,65 @@ const HABITS: HabitDef[] = [
 
 const WORKOUT_DAYS: WorkoutDay[] = [
   {
-    day: 'Monday', title: 'Chest hypertrophy · Triceps support · Core day 1 of 3', exercises: [
-      { name: 'Push-Up Warm-Up',            sets: '2×15–20',             rest: '—',          note: 'Warm up before pressing. Full ROM.',                                       noWeight: true, logType: 'checkbox', formUrl: 'https://www.youtube.com/results?search_query=push+up+proper+form' },
-      { name: 'Incline DB Bench Press',     sets: '4×6–10',              rest: '2.5–4 min',  note: 'Primary compound. Elbows 60–75° from torso.',                                                              formUrl: 'https://www.youtube.com/results?search_query=incline+dumbbell+bench+press+proper+form' },
-      { name: 'Pec Deck Machine Flys',      sets: '3×10–12',             rest: '60–90 sec',  note: 'Full ROM, constant tension.',                                                                               formUrl: 'https://www.youtube.com/results?search_query=pec+deck+fly+proper+form' },
-      { name: 'Single-Arm DB Floor Press',  sets: '3×10–12 each',        rest: '60–90 sec',  note: 'Limited ROM protects the labrum.',                                                                          formUrl: 'https://www.youtube.com/results?search_query=single+arm+dumbbell+floor+press+form' },
-      { name: 'Cable Triceps Rope Pushdown',sets: '3×10–12',             rest: '60–90 sec',  note: 'Elbows fixed at sides.',                                                                                    formUrl: 'https://www.youtube.com/results?search_query=cable+triceps+rope+pushdown+form' },
-      { name: 'DB Skull Crushers',          sets: '3×12–15',             rest: '60 sec',     note: 'Floor or flat bench. Lower slowly to temples, press straight up.',                                         formUrl: 'https://www.youtube.com/results?search_query=dumbbell+skull+crushers+proper+form' },
-      { name: 'Ab Circuit',                 sets: '3 rounds',            rest: '—',          note: 'Plank 45–60s / Leg Raises 12–15 / Crunches 15–20',                        noWeight: true, logType: 'rounds', formUrl: 'https://www.youtube.com/results?search_query=ab+circuit+core+workout+form' },
+    day: 'Monday', title: 'Push (Chest & Triceps) · Core Day 1 of 3', exercises: [
+      { name: 'Push-Up Warm-Up',            sets: '2×15–20',              rest: '30 sec',      note: 'Activation only. Not a working set.',                                                                                                                                                                                            noWeight: true, logType: 'checkbox', formUrl: 'https://www.youtube.com/results?search_query=push+up+proper+form' },
+      { name: 'Incline DB Bench Press',     sets: '4×6–10',               rest: '2.5–4 min',   note: '30° incline, neutral grip, north-to-south press. Do not flare elbows.',                                                                                                                                                          formUrl: 'https://www.youtube.com/results?search_query=incline+dumbbell+bench+press+proper+form' },
+      { name: 'Pec Deck Machine Flys',      sets: '3×10–12',              rest: '60–90 sec',   note: 'Full ROM, constant tension.',                                                                                                                                                                                                    formUrl: 'https://www.youtube.com/results?search_query=pec+deck+fly+proper+form' },
+      { name: 'Single-Arm DB Floor Press',  sets: '3×10–12 each',         rest: '60–90 sec',   note: 'Limited ROM protects the labrum.',                                                                                                                                                                                               formUrl: 'https://www.youtube.com/results?search_query=single+arm+dumbbell+floor+press+form' },
+      { name: 'Cable Triceps Rope Pushdown',sets: '3×10–12',              rest: '60–90 sec',   note: 'Elbows fixed at sides.',                                                                                                                                                                                                         formUrl: 'https://www.youtube.com/results?search_query=cable+triceps+rope+pushdown+form' },
+      { name: 'DB Skull Crushers',          sets: '3×12–15',              rest: '60 sec',      note: 'Floor or flat bench. Lower slowly to temples.',                                                                                                                                                                                  formUrl: 'https://www.youtube.com/results?search_query=dumbbell+skull+crushers+proper+form' },
+      { name: 'Ab Circuit',                 sets: '3 rounds',             rest: '—',           note: 'Plank 45–60s / Leg Raises 12–15 / Crunches 15–20. Core finisher — do last.',                                                                                                    noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=ab+circuit+core+workout+form' },
     ]
   },
   {
     day: 'Tuesday', title: 'Legs (Quad Dominant)', exercises: [
-      { name: 'Hack Squat Machine',         sets: '4×8–10',              rest: '2.5–4 min',                                                                                                                     formUrl: 'https://www.youtube.com/results?search_query=hack+squat+machine+proper+form' },
-      { name: 'Leg Press',                  sets: '3×10–12',             rest: '2–3 min',                                                                                                                       formUrl: 'https://www.youtube.com/results?search_query=leg+press+proper+form' },
-      { name: 'DB Lunge In Place',          sets: '3×10–12 each',        rest: '2 min',                                                                                                                         formUrl: 'https://www.youtube.com/results?search_query=dumbbell+lunge+proper+form' },
-      { name: 'Leg Extension',              sets: '3×10–12',             rest: '60–90 sec',  note: '1-sec hold at top.',                                                                                        formUrl: 'https://www.youtube.com/results?search_query=leg+extension+machine+proper+form' },
-      { name: 'Seated Calf Raises',         sets: '3×12–15',             rest: '60 sec',                                                                                                                        formUrl: 'https://www.youtube.com/results?search_query=seated+calf+raise+proper+form' },
-      { name: 'Stairmaster Finisher',       sets: '8–10 min',            rest: 'moderate pace',                                                                                   noWeight: true, logType: 'duration', formUrl: 'https://www.youtube.com/results?search_query=stairmaster+proper+form+technique' },
+      { name: 'Push-Up Warm-Up',            sets: '2×15–20',              rest: '30 sec',      note: 'Activation only before leg session.',                                                                                                                                                                                            noWeight: true, logType: 'checkbox', formUrl: 'https://www.youtube.com/results?search_query=push+up+proper+form' },
+      { name: 'Hack Squat Machine',         sets: '4×8–10',               rest: '2.5–4 min',   note: 'Feet shoulder-width, toes slightly out. Control descent.',                                                                                                                                                                       formUrl: 'https://www.youtube.com/results?search_query=hack+squat+machine+proper+form' },
+      { name: 'Leg Press',                  sets: '3×10–12',              rest: '2–3 min',     note: 'Full ROM. Do not lock out at top.',                                                                                                                                                                                              formUrl: 'https://www.youtube.com/results?search_query=leg+press+proper+form' },
+      { name: 'DB Lunge In Place',          sets: '3×10–12 each',         rest: '2 min',       note: '90° at both knees at bottom.',                                                                                                                                                                                                   formUrl: 'https://www.youtube.com/results?search_query=dumbbell+lunge+proper+form' },
+      { name: 'Leg Extension',              sets: '3×10–12',              rest: '60–90 sec',   note: '1-sec hold at full extension.',                                                                                                                                                                                                  formUrl: 'https://www.youtube.com/results?search_query=leg+extension+machine+proper+form' },
+      { name: 'Seated Calf Raises',         sets: '3×12–15',              rest: '60 sec',      note: 'Full stretch at bottom, full contraction at top.',                                                                                                                                                                               formUrl: 'https://www.youtube.com/results?search_query=seated+calf+raise+proper+form' },
+      { name: 'Stairmaster Finisher',       sets: '8–10 min',             rest: '—',           note: 'Moderate pace. Active recovery.',                                                                                                                                  noWeight: true, logType: 'duration', formUrl: 'https://www.youtube.com/results?search_query=stairmaster+proper+form+technique' },
     ]
   },
   {
-    day: 'Wednesday', title: 'Shoulders, PT & Conditioning · Core day 2 of 3', exercises: [
-      { name: 'Physical Therapy',           sets: '10–15 min',           rest: '—',          note: 'NON-NEGOTIABLE. Always first.',                                            noWeight: true, logType: 'duration', formUrl: 'https://www.youtube.com/results?search_query=shoulder+labrum+physical+therapy+exercises' },
-      { name: 'Ab Circuit',                 sets: '3 rounds',            rest: '—',          note: 'Plank 30–60s / Leg Raises 12–15 / Crunches 15–20',                        noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=ab+circuit+core+workout+form' },
-      { name: 'Cable Lateral Raises',       sets: '4×12–15',             rest: '60–90 sec',  note: 'Slight forward lean. +2.5 lbs only.',                                                                       formUrl: 'https://www.youtube.com/results?search_query=cable+lateral+raise+proper+form' },
-      { name: 'Seated DB Lateral Raises',   sets: '3×12–15',             rest: '60 sec',                                                                                                                        formUrl: 'https://www.youtube.com/results?search_query=seated+dumbbell+lateral+raise+form' },
-      { name: 'Cable Face Pulls',           sets: '3×12–15',             rest: '60–90 sec',  note: 'Critical for shoulder health.',                                                                             formUrl: 'https://www.youtube.com/results?search_query=cable+face+pull+proper+form' },
-      { name: 'Farmers Carry',              sets: '3×120–160 steps',     rest: '90 sec',     note: '50–70 lbs/hand.',                                                          noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=farmers+carry+proper+form' },
-      { name: 'Jump Rope Intervals',        sets: '3×2 min on/60 sec off',rest: '—',         note: 'Alt: 10 min Stairmaster.',                                                 noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=jump+rope+proper+form+technique' },
+    day: 'Wednesday', title: 'PT + Core + Conditioning · Core Day 2 of 3', exercises: [
+      { name: 'Physical Therapy',           sets: '15–20 min',            rest: '—',           note: 'NON-NEGOTIABLE. Primary focus of this day. Never cut this.',                                                                                                    noWeight: true, logType: 'duration', formUrl: 'https://www.youtube.com/results?search_query=shoulder+labrum+physical+therapy+exercises' },
+      { name: 'Ab Circuit',                 sets: '3 rounds',             rest: '—',           note: 'Plank 45–60s / Leg Raises 12–15 / Crunches 15–20.',                                                                                                            noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=ab+circuit+core+workout+form' },
+      { name: 'Farmers Carry',              sets: '3×120–160 steps',      rest: '90 sec',      note: '50–70 lbs/hand. Upright posture. Grip + core. Minimal shoulder stress.',                                                                                                       noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=farmers+carry+proper+form' },
+      { name: 'Jump Rope Intervals',        sets: '3×2 min on/60 sec off',rest: '—',           note: 'Alt: 15–20 min Stairmaster moderate-high.',                                                                                                                     noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=jump+rope+proper+form+technique' },
     ]
   },
   {
-    day: 'Thursday', title: 'Pull (Back & Biceps) · Core day 3 of 3', exercises: [
-      { name: 'One-Arm DB Row',             sets: '4×8–12 each',         rest: '2.5–3 min',                                                                                                                     formUrl: 'https://www.youtube.com/results?search_query=one+arm+dumbbell+row+proper+form' },
-      { name: 'Seated Cable Row Close Grip',sets: '3×8–12',              rest: '2–3 min',                                                                                                                       formUrl: 'https://www.youtube.com/results?search_query=seated+cable+row+proper+form' },
-      { name: 'Lat Pulldown Wide Grip',     sets: '3×10–12',             rest: '2 min',      note: 'Builds V-taper.',                                                                                           formUrl: 'https://www.youtube.com/results?search_query=lat+pulldown+wide+grip+proper+form' },
-      { name: 'Barbell Curl 90/90/180 Method',sets: '3×8–10',            rest: '90 sec',                                                                                                                        formUrl: 'https://www.youtube.com/results?search_query=barbell+curl+proper+form' },
-      { name: 'Incline DB Curl',            sets: '3×10–12',             rest: '60–90 sec',  note: 'Priority biceps movement. Use a 30° angled bench.',                                                        formUrl: 'https://www.youtube.com/results?search_query=incline+dumbbell+curl+proper+form+30+degree' },
-      { name: 'Ab Circuit',                 sets: '3 rounds',            rest: '—',          note: 'Plank 45–60s / Leg Raises 12–15 / Crunches 15–20',                        noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=ab+circuit+core+workout+form' },
+    day: 'Thursday', title: 'Pull (Back & Biceps) · Core Day 3 of 3', exercises: [
+      { name: 'Push-Up Warm-Up',            sets: '2×15–20',              rest: '30 sec',      note: 'Activation only.',                                                                                                                                              noWeight: true, logType: 'checkbox', formUrl: 'https://www.youtube.com/results?search_query=push+up+proper+form' },
+      { name: 'One-Arm DB Row',             sets: '4×8–12 each',          rest: '2.5–3 min',   note: 'Drive elbow back and up. Full stretch at bottom.',                                                                                                              formUrl: 'https://www.youtube.com/results?search_query=one+arm+dumbbell+row+proper+form' },
+      { name: 'Seated Cable Row Close Grip',sets: '3×8–12',               rest: '2–3 min',     note: 'Torso upright — no momentum. Pull to lower sternum.',                                                                                                           formUrl: 'https://www.youtube.com/results?search_query=seated+cable+row+proper+form' },
+      { name: 'Lat Pulldown Wide Grip',     sets: '3×10–12',              rest: '2 min',       note: 'Pull to upper chest. Lean back ~10–15°. Builds V-taper.',                                                                                                       formUrl: 'https://www.youtube.com/results?search_query=lat+pulldown+wide+grip+proper+form' },
+      { name: 'Barbell Curl 90/90/180',     sets: '3×8–10',               rest: '90 sec',      note: 'Partial ranges before full reps. No elbow swing.',                                                                                                              formUrl: 'https://www.youtube.com/results?search_query=barbell+curl+proper+form' },
+      { name: 'Incline DB Curl',            sets: '3×10–12',              rest: '60–90 sec',   note: 'Use a 30° angled bench. Full stretch at bottom. Priority biceps movement.',                                                                                     formUrl: 'https://www.youtube.com/results?search_query=incline+dumbbell+curl+proper+form+30+degree' },
+      { name: 'Cable Face Pulls',           sets: '3×12–15',              rest: '60–90 sec',   note: 'Cable at face height, elbows flared high. Moved from Wednesday — posterior shoulder and rotator cuff health. Critical for labrum stability.',                    formUrl: 'https://www.youtube.com/results?search_query=cable+face+pull+proper+form' },
+      { name: 'Ab Circuit',                 sets: '3 rounds',             rest: '—',           note: 'Plank 45–60s / Leg Raises 12–15 / Crunches 15–20. Core finisher — do last.',                                                                                                    noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=ab+circuit+core+workout+form' },
     ]
   },
   {
-    day: 'Friday', title: 'Posterior Chain + Biceps', exercises: [
-      { name: 'Trap Bar Deadlift',          sets: '4×6–8',               rest: '3–4 min',                                                                                                                       formUrl: 'https://www.youtube.com/results?search_query=trap+bar+deadlift+proper+form' },
-      { name: 'Seated Leg Curl',            sets: '3×10–12',             rest: '90 sec',     note: '1-sec pause at contraction.',                                                                               formUrl: 'https://www.youtube.com/results?search_query=seated+leg+curl+machine+proper+form' },
-      { name: 'Bulgarian Split Squat DB',   sets: '3×10–12 each',        rest: '2 min',                                                                                                                         formUrl: 'https://www.youtube.com/results?search_query=bulgarian+split+squat+dumbbell+form' },
-      { name: 'Standing Calf Raises',       sets: '3×12–15',             rest: '60 sec',                                                                                                                        formUrl: 'https://www.youtube.com/results?search_query=standing+calf+raise+proper+form' },
-      { name: 'Hammer Curls',              sets: '3×10–12',             rest: '60–90 sec',                                                                                                                      formUrl: 'https://www.youtube.com/results?search_query=hammer+curl+proper+form' },
-      { name: 'Reverse Barbell Curl',       sets: '2×10–12',             rest: '60 sec',                                                                                                                        formUrl: 'https://www.youtube.com/results?search_query=reverse+barbell+curl+proper+form' },
-      { name: 'Stairmaster Finisher',       sets: '10–15 min',           rest: 'moderate-high intensity',                                                                     noWeight: true, logType: 'duration', formUrl: 'https://www.youtube.com/results?search_query=stairmaster+proper+form+technique' },
+    day: 'Friday', title: 'Legs (Posterior Chain) + Biceps + Lateral Delts', exercises: [
+      { name: 'Hip Hinge Warm-Up',          sets: '2×10–12',              rest: '30 sec',      note: 'Light Romanian deadlift or band pull-through. Activates posterior chain before trap bar. Do NOT use push-ups here — anterior fatigue before heavy hinging is counterproductive.', noWeight: true, logType: 'checkbox', formUrl: 'https://www.youtube.com/results?search_query=romanian+deadlift+hip+hinge+form' },
+      { name: 'Trap Bar Deadlift',          sets: '4×6–8',                rest: '3–4 min',     note: 'Primary compound. Neutral grip, flat back, drive through heels.',                                                                                                               formUrl: 'https://www.youtube.com/results?search_query=trap+bar+deadlift+proper+form' },
+      { name: 'Seated Leg Curl',            sets: '3×10–12',              rest: '90 sec',      note: '1-sec pause at full contraction.',                                                                                                                               formUrl: 'https://www.youtube.com/results?search_query=seated+leg+curl+machine+proper+form' },
+      { name: 'Bulgarian Split Squat DB',   sets: '3×10–12 each',         rest: '2 min',       note: 'Rear foot on bench. Front shin near-vertical at bottom.',                                                                                                        formUrl: 'https://www.youtube.com/results?search_query=bulgarian+split+squat+dumbbell+form' },
+      { name: 'Standing Calf Raises',       sets: '3×12–15',              rest: '60 sec',      note: 'Full ROM.',                                                                                                                                                      formUrl: 'https://www.youtube.com/results?search_query=standing+calf+raise+proper+form' },
+      { name: 'Hammer Curls',               sets: '3×10–12',              rest: '60–90 sec',   note: 'Neutral grip. Targets brachialis — arm thickness.',                                                                                                             formUrl: 'https://www.youtube.com/results?search_query=hammer+curl+proper+form' },
+      { name: 'Reverse Barbell Curl',       sets: '2×10–12',              rest: '60 sec',      note: 'Overhand grip. Brachioradialis and forearms.',                                                                                                                  formUrl: 'https://www.youtube.com/results?search_query=reverse+barbell+curl+proper+form' },
+      { name: 'Cable Lateral Raises',       sets: '3×12–15',              rest: '60–90 sec',   note: 'Moved from Wednesday. Slight forward lean. +2.5 lbs only. STOP immediately if shoulder pain. Only direct lateral delt work in the program.',                    formUrl: 'https://www.youtube.com/results?search_query=cable+lateral+raise+proper+form' },
     ]
   },
   {
     day: 'Saturday', title: 'Optional Active Recovery', exercises: [
-      { name: 'Basketball / Barre / Yoga / Walk', sets: '30–60 min', rest: '—', noWeight: true, logType: 'duration' },
+      { name: 'Basketball / Barre / Yoga / Walk', sets: '30–60 min', rest: '—', note: 'No warm-up required.', noWeight: true, logType: 'duration' },
     ]
   },
-  { day: 'Sunday', title: 'Full Rest', exercises: [] },
+  { day: 'Sunday', title: 'Full Rest + Weekly Audio Diary', exercises: [] },
 ]
 
 // ─── Meal Plans (Section 5a — updated Meal 1 for Vega Sport) ─────────────────
@@ -233,9 +234,8 @@ function getWeekNumber(): number { return Math.ceil(getDayNumber() / 7) }
 
 function getPhase(): { phase: number; name: string; weeks: string } {
   const w = getWeekNumber()
-  if (w <= 4) return { phase: 1, name: 'Foundation', weeks: '1–4' }
-  if (w <= 8) return { phase: 2, name: 'Build', weeks: '5–8' }
-  return { phase: 3, name: 'Peak', weeks: '9–13' }
+  if (w <= 8) return { phase: 1, name: 'Foundation', weeks: '1–8' }
+  return { phase: 2, name: 'Build', weeks: '9–13' }
 }
 
 function getWeekDates(dateString: string): string[] {
@@ -787,7 +787,7 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
         <div style={{ fontSize: 13, marginTop: 4, opacity: 0.9 }}>Weeks {phase.weeks}</div>
         {phase.phase >= 2 && (
           <div style={{ fontSize: 11, marginTop: 6, padding: '4px 10px', background: 'rgba(255,255,255,0.15)', borderRadius: 8, display: 'inline-block' }}>
-            {phase.phase === 2 ? 'Seated DB OH Press added (3×8–10)' : 'Seated DB OH Press primary (4×6–10)'}
+            Seated DB OH Press on Friday (3×8–10) — only if shoulder pain-free 3+ weeks
           </div>
         )}
       </div>
@@ -796,6 +796,12 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
       {todayWorkout && todayWorkout.exercises.length > 0 && (
         <div>
           <div style={sectionTitleStyle}>TODAY — {todayWorkout.day.toUpperCase()}</div>
+          {todayWorkout.day === 'Wednesday' && (
+            <div style={{ ...cardStyle, background: `${COLORS.gold}18`, border: `1px solid ${COLORS.gold}60`, marginBottom: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>⚠️ Shoulder Recovery Day. No lateral raises. No pressing.</div>
+              <div style={{ fontSize: 12, color: COLORS.slate, lineHeight: 1.5 }}>PT is the priority — everything else supports recovery and conditioning.</div>
+            </div>
+          )}
           <div style={{ ...cardStyle, borderColor: `${COLORS.primary}30` }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink, marginBottom: 12 }}>{todayWorkout.title}</div>
             {todayWorkout.exercises.map((ex, ei) => {
@@ -893,6 +899,12 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
             </div>
             {isExp && wd.exercises.length > 0 && (
               <div style={{ marginTop: 10 }}>
+                {wd.day === 'Wednesday' && (
+                  <div style={{ padding: '8px 10px', background: `${COLORS.gold}18`, border: `1px solid ${COLORS.gold}60`, borderRadius: 8, marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.ink }}>⚠️ Shoulder Recovery Day. No lateral raises. No pressing.</div>
+                    <div style={{ fontSize: 11, color: COLORS.slate, marginTop: 2 }}>PT is the priority — everything else supports recovery and conditioning.</div>
+                  </div>
+                )}
                 {wd.exercises.map((ex, i) => (
                   <div key={i} style={{ padding: '6px 0', fontSize: 13, color: COLORS.ink, borderTop: i > 0 ? `1px solid ${COLORS.mist}` : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
@@ -1536,15 +1548,15 @@ function PlanTab() {
 
   const nonNegotiables = [
     '200g protein/day — everything else is secondary',
-    'Wednesday is the most important training day — never skip',
-    'PT before every Wednesday session — always',
+    'Wednesday PT is the most important session — never skip or cut short',
+    'Wednesday is Shoulder Recovery Day — zero pressing, zero lateral raises',
     'Log every set with weight and reps',
     '7 hours sleep is the floor, not the goal',
   ]
 
   const sections: { key: string; title: string; content: string }[] = [
     { key: 'goal', title: 'Program Goal', content: '91-day body recomposition: reduce body fat from ~18% to 12–14% while maintaining or increasing lean mass. Target weight: 213–218 lbs by June 21, 2026.' },
-    { key: 'injury', title: 'Injury Protocol', content: 'Right shoulder labral tear, 90–95% recovered.\n\n• No barbell overhead press\n• No upright rows\n• No behind-the-neck movements\n• All lateral raises at slight forward angle\n• PT every Wednesday — non-negotiable\n• If PT skipped 3+ days → drop 1 set from all pressing that week' },
+    { key: 'injury', title: 'Injury Protocol', content: 'Right shoulder labral tear, 90–95% recovered.\n\n• No barbell overhead press\n• No upright rows\n• No behind-the-neck movements\n• All lateral raises at slight forward angle\n• PT every Wednesday — non-negotiable\n• If PT skipped 3+ days → drop 1 set from all pressing that week\n\nSHOULDER RESTRUCTURE — Week 2: Sharp pain reported in right shoulder (previously torn labrum). Wednesday direct shoulder work removed entirely. Lateral raises reduced from 7 sets to 3 sets/week, moved to Friday. Face pulls moved to Thursday. Phase II overhead pressing pushed from Week 5 to Week 9 minimum, conditional on 3+ consecutive pain-free weeks. If sharp pain recurs, stop aggravating movement immediately and reduce lateral raise weight by 50% the following week.' },
     { key: 'overload', title: 'Progressive Overload', content: '• Dumbbells: +2.5–5 lbs\n• Cables: +5 lbs\n• Barbell: +5 lbs\n• Lateral raises: +2.5 lbs only\n• Overhead press: +2.5–5 lbs in Phase II–III\n• Log every set — no guessing' },
     { key: 'deload', title: 'Deload Schedule', content: '40–50% volume reduction at the end of Week 8, before Phase III begins. Maintain intensity, reduce sets.' },
     { key: 'recovery', title: 'Recovery Stack', content: '• Magnesium glycinate 200–400mg, 30–60 min before bed\n• Electrolytes on leg days and Wednesdays\n• Coconut water daily' },
@@ -1567,9 +1579,9 @@ function PlanTab() {
       <div style={sectionTitleStyle}>PHASES</div>
       <div style={cardStyle}>
         {[
-          { p: 'I', w: 'Weeks 1–4', name: 'Foundation', note: 'No overhead pressing.' },
-          { p: 'II', w: 'Weeks 5–8', name: 'Build', note: 'Seated DB OH Press introduced (3×8–10) on Wed after PT/abs.' },
-          { p: 'III', w: 'Weeks 9–13', name: 'Peak', note: 'Seated DB OH Press becomes primary compound (4×6–10).' },
+          { p: 'I', w: 'Weeks 1–8', name: 'Foundation', note: 'No overhead pressing. Program exactly as written.' },
+          { p: 'II', w: 'Week 9+ (conditional)', name: 'Build', note: 'Introduce Seated DB OH Press on Friday after lateral raises. 3×8–10. ONLY IF shoulder completely pain-free 3+ consecutive weeks. Stop immediately if any sharp pain.' },
+          { p: 'III', w: 'After Phase II', name: 'Peak', note: 'Only if Phase II consistently pain-free. Elevate to 4×6–10.' },
         ].map((ph, i) => (
           <div key={i} style={{ padding: '10px 0', borderTop: i > 0 ? `1px solid ${COLORS.mist}` : 'none' }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
