@@ -154,7 +154,6 @@ const WORKOUT_DAYS: WorkoutDay[] = [
       { name: 'Lat Pulldown Wide Grip',     sets: '3×10–12',              rest: '2 min',       note: 'Pull to upper chest. Lean back ~10–15°. Builds V-taper.',                                                                                                       formUrl: 'https://www.youtube.com/results?search_query=lat+pulldown+wide+grip+proper+form' },
       { name: 'Barbell Curl 90/90/180',     sets: '3×8–10',               rest: '90 sec',      note: 'Partial ranges before full reps. No elbow swing.',                                                                                                              formUrl: 'https://www.youtube.com/results?search_query=barbell+curl+proper+form' },
       { name: 'Incline DB Curl',            sets: '3×10–12',              rest: '60–90 sec',   note: 'Use a 30° angled bench. Full stretch at bottom. Priority biceps movement.',                                                                                     formUrl: 'https://www.youtube.com/results?search_query=incline+dumbbell+curl+proper+form+30+degree' },
-      { name: 'Cable Face Pulls',           sets: '3×12–15',              rest: '60–90 sec',   note: 'Cable at face height, elbows flared high. Moved from Wednesday — posterior shoulder and rotator cuff health. Critical for labrum stability.',                    formUrl: 'https://www.youtube.com/results?search_query=cable+face+pull+proper+form' },
       { name: 'Ab Circuit',                 sets: '3 rounds',             rest: '—',           note: 'Plank 45–60s / Leg Raises 12–15 / Crunches 15–20. Core finisher — do last.',                                                                                                    noWeight: true, logType: 'rounds',   formUrl: 'https://www.youtube.com/results?search_query=ab+circuit+core+workout+form' },
     ]
   },
@@ -317,10 +316,15 @@ function getWorkoutWeeks(data: AppData): boolean[] {
   })
 }
 
-// Section 4d/4f: workout history helpers
+function sanitizeExerciseName(name: string): string {
+  return name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+}
+
+// Section 4d/4f: workout history helpers — name-based storage keys
 function getAllSessionsForExercise(
-  data: AppData, exerciseIndex: number, dayOfWeek: number, beforeDate?: string
+  data: AppData, exerciseName: string, dayOfWeek: number, beforeDate?: string
 ): { date: string; sets: { weight: string; reps: string }[] }[] {
+  const sanitized = sanitizeExerciseName(exerciseName)
   const sessions: { date: string; sets: { weight: string; reps: string }[] }[] = []
   for (const dateKey of Object.keys(data.workoutLogs).sort()) {
     if (beforeDate && dateKey >= beforeDate) continue
@@ -328,8 +332,8 @@ function getAllSessionsForExercise(
     const logs = data.workoutLogs[dateKey] || {}
     const sets: { weight: string; reps: string }[] = []
     for (let si = 0; si < 10; si++) {
-      const w = logs[`${exerciseIndex}-${si}-w`]
-      const r = logs[`${exerciseIndex}-${si}-r`]
+      const w = logs[`${sanitized}-${si}-w`]
+      const r = logs[`${sanitized}-${si}-r`]
       if (w || r) sets.push({ weight: w || '', reps: r || '' }); else break
     }
     if (sets.length > 0) sessions.push({ date: dateKey, sets })
@@ -359,17 +363,103 @@ const EMPTY_DATA: AppData = {
   habits: {}, workoutLogs: {}, weeklyLogs: [], nutritionLogs: {}, stepsRanges: {}, audioLogs: {},
 }
 
+function saveData(data: AppData) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+}
+
+// Migrate old index-based keys and audit for unknown keys
+function migrateAndAuditWorkoutLogs(data: AppData): { data: AppData; clearedDates: string[] } {
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+  const knownNames = new Set<string>()
+  WORKOUT_DAYS.forEach(wd => wd.exercises.forEach(ex => knownNames.add(sanitizeExerciseName(ex.name))))
+
+  const clearedDates: string[] = []
+  const newWorkoutLogs: Record<string, Record<string, string>> = {}
+  const quarantine: Record<string, Record<string, string>> = {}
+
+  for (const [dateKey, logs] of Object.entries(data.workoutLogs)) {
+    const hasOldFormat = Object.keys(logs).some(k => /^\d+-/.test(k))
+
+    if (!hasOldFormat) {
+      // Audit: quarantine any keys that don't match known exercises or special fields
+      const clean: Record<string, string> = {}
+      const bad: Record<string, string> = {}
+      for (const [key, value] of Object.entries(logs)) {
+        if (key === 'locked') { clean[key] = value; continue }
+        const isKnown = [...knownNames].some(n => key === `${n}-done` || key === `${n}-rounds` || key === `${n}-duration` || key === `${n}-notes` || /^-\d+-[wr]$/.test(key.slice(n.length)) && key.startsWith(n))
+        if (isKnown) { clean[key] = value } else { bad[key] = value }
+      }
+      newWorkoutLogs[dateKey] = clean
+      if (Object.keys(bad).length > 0) {
+        quarantine[dateKey] = bad
+        console.warn(`[Stack Weeks Audit] Quarantined ${Object.keys(bad).length} unknown keys from ${dateKey}`)
+      }
+      continue
+    }
+
+    // Attempt migration from old index-based format
+    const dow = new Date(dateKey + 'T12:00:00').getDay()
+    const workoutDay = WORKOUT_DAYS.find(w => w.day === DAYS[dow])
+    if (!workoutDay || workoutDay.exercises.length === 0) {
+      clearedDates.push(dateKey)
+      console.warn(`[Stack Weeks Migration] Cleared ${dateKey} — no workout mapping for that day`)
+      continue
+    }
+
+    const newLogs: Record<string, string> = {}
+    let ok = true
+    const getEx = (i: string) => workoutDay.exercises[parseInt(i)]
+
+    for (const [key, value] of Object.entries(logs)) {
+      if (key === 'locked') { newLogs[key] = value; continue }
+      let m: RegExpMatchArray | null
+      if ((m = key.match(/^(\d+)-(\d+)-w$/))) {
+        const ex = getEx(m[1]); if (ex) newLogs[`${sanitizeExerciseName(ex.name)}-${m[2]}-w`] = value; else ok = false
+      } else if ((m = key.match(/^(\d+)-(\d+)-r$/))) {
+        const ex = getEx(m[1]); if (ex) newLogs[`${sanitizeExerciseName(ex.name)}-${m[2]}-r`] = value; else ok = false
+      } else if ((m = key.match(/^(\d+)-done$/))) {
+        const ex = getEx(m[1]); if (ex) newLogs[`${sanitizeExerciseName(ex.name)}-done`] = value; else ok = false
+      } else if ((m = key.match(/^(\d+)-rounds$/))) {
+        const ex = getEx(m[1]); if (ex) newLogs[`${sanitizeExerciseName(ex.name)}-rounds`] = value; else ok = false
+      } else if ((m = key.match(/^(\d+)-duration$/))) {
+        const ex = getEx(m[1]); if (ex) newLogs[`${sanitizeExerciseName(ex.name)}-duration`] = value; else ok = false
+      } else if ((m = key.match(/^(\d+)-notes$/))) {
+        const ex = getEx(m[1]); if (ex) newLogs[`${sanitizeExerciseName(ex.name)}-notes`] = value; else ok = false
+      } else { newLogs[key] = value }
+    }
+
+    if (!ok) {
+      clearedDates.push(dateKey)
+      console.warn(`[Stack Weeks Migration] Cleared ${dateKey} — exercise index out of range`)
+    } else {
+      newWorkoutLogs[dateKey] = newLogs
+    }
+  }
+
+  if (Object.keys(quarantine).length > 0) {
+    try {
+      const existing = JSON.parse(localStorage.getItem('workoutLogs_quarantine') || '{}')
+      localStorage.setItem('workoutLogs_quarantine', JSON.stringify({ ...existing, ...quarantine }))
+    } catch { /* non-fatal */ }
+  }
+
+  const totalDates = Object.keys(data.workoutLogs).length
+  console.log(`[Stack Weeks Audit] ${totalDates} dates audited. Cleared: ${clearedDates.length}. Quarantined batches: ${Object.keys(quarantine).length}`)
+  return { data: { ...data, workoutLogs: newWorkoutLogs }, clearedDates }
+}
+
 function loadData(): AppData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { ...EMPTY_DATA }
     const parsed = JSON.parse(raw)
-    return { ...EMPTY_DATA, ...parsed, stepsRanges: parsed.stepsRanges || {}, audioLogs: parsed.audioLogs || {} }
+    let appData: AppData = { ...EMPTY_DATA, ...parsed, stepsRanges: parsed.stepsRanges || {}, audioLogs: parsed.audioLogs || {} }
+    const { data: migrated, clearedDates } = migrateAndAuditWorkoutLogs(appData)
+    appData = migrated
+    if (clearedDates.length > 0) localStorage.setItem('sw_migration_cleared', 'true')
+    saveData(appData)
+    return appData
   } catch { return { ...EMPTY_DATA } }
-}
-
-function saveData(data: AppData) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
 // ─── Shared Styles ────────────────────────────────────────────────────────────
@@ -422,6 +512,11 @@ export default function App() {
   const todayDayName = getDayOfWeekName(today())
   const [workoutExpandedDay, setWorkoutExpandedDay] = useState<string | null>(todayDayName)
   const [nutritionExpandedMeal, setNutritionExpandedMeal] = useState<number | null>(null)
+  const [showMigrationBanner, setShowMigrationBanner] = useState(() => {
+    const val = localStorage.getItem('sw_migration_cleared')
+    if (val === 'true') { localStorage.removeItem('sw_migration_cleared'); return true }
+    return false
+  })
 
   const updateData = useCallback((updater: (prev: AppData) => AppData) => {
     setData(prev => {
@@ -444,6 +539,15 @@ export default function App() {
           <div style={{ height: '100%', width: `${(getDayNumber() / TOTAL_DAYS) * 100}%`, background: COLORS.gold, transition: 'width 0.5s' }} />
         </div>
       </div>
+
+      {showMigrationBanner && (
+        <div style={{ background: '#FEF3C7', borderBottom: '1px solid #F59E0B', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: '#92400E', lineHeight: 1.5 }}>
+            Some older workout data was cleared due to a storage format update. We're sorry for the inconvenience — this won't happen again.
+          </span>
+          <button onClick={() => setShowMigrationBanner(false)} style={{ flexShrink: 0, background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: '#92400E', padding: 0 }}>✕</button>
+        </div>
+      )}
 
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 16px 16px', WebkitOverflowScrolling: 'touch' }}>
         {tab === 'today'     && <TodayTab data={data} updateData={updateData} selectedDate={selectedDate} setSelectedDate={setSelectedDate} />}
@@ -703,8 +807,9 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyView, setHistoryView] = useState<'date' | 'exercise'>('date')
   const [selectedExercise, setSelectedExercise] = useState('')
-  // Section 4g: track which set fields have been blurred with a value
   const [savedSets, setSavedSets] = useState<Record<string, boolean>>({})
+  const [showFinishModal, setShowFinishModal] = useState(false)
+  const [confirmingUnlock, setConfirmingUnlock] = useState(false)
 
   const setLog = (key: string, value: string) => {
     updateData(prev => {
@@ -716,30 +821,39 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
     })
   }
 
-  const getLastSessionData = (exerciseIndex: number): { date: string; sets: { weight: string; reps: string }[] } | null => {
-    const sessions = getAllSessionsForExercise(data, exerciseIndex, todayDow, today())
+  const setWorkoutData = (exerciseName: string, field: string, value: string) => {
+    if (todayWorkout && !todayWorkout.exercises.some(ex => ex.name === exerciseName)) {
+      console.warn(`[Stack Weeks] Write rejected — "${exerciseName}" not in today's ${todayWorkout.day} workout`)
+      return
+    }
+    setLog(`${sanitizeExerciseName(exerciseName)}-${field}`, value)
+  }
+
+  const getLastSessionData = (exerciseName: string): { date: string; sets: { weight: string; reps: string }[] } | null => {
+    const sessions = getAllSessionsForExercise(data, exerciseName, todayDow, today())
     return sessions[0] || null
   }
 
-  const getOverloadTrend = (exerciseIndex: number): { date: string; topWeight: number }[] => {
-    const sessions = getAllSessionsForExercise(data, exerciseIndex, todayDow, today())
+  const getOverloadTrend = (exerciseName: string): { date: string; topWeight: number }[] => {
+    const sessions = getAllSessionsForExercise(data, exerciseName, todayDow, today())
     return sessions.slice(0, 4).reverse().map(s => ({
       date: s.date,
       topWeight: Math.max(...s.sets.map(set => parseFloat(set.weight) || 0))
     })).filter(s => s.topWeight > 0)
   }
 
-  const renderNoWeightExercise = (ex: WorkoutExercise, ei: number) => {
-    const doneKey = `${ei}-done`
-    const roundsKey = `${ei}-rounds`
-    const durKey = `${ei}-duration`
-    const notesKey = `${ei}-notes`
+  const renderNoWeightExercise = (ex: WorkoutExercise, _ei: number) => {
+    const sName = sanitizeExerciseName(ex.name)
+    const doneKey = `${sName}-done`
+    const roundsKey = `${sName}-rounds`
+    const durKey = `${sName}-duration`
+    const notesKey = `${sName}-notes`
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
         {ex.logType === 'checkbox' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div onClick={() => setLog(doneKey, todayLogs[doneKey] === 'true' ? '' : 'true')}
+            <div onClick={() => setWorkoutData(ex.name, 'done', todayLogs[doneKey] === 'true' ? '' : 'true')}
               style={{ width: 32, height: 32, borderRadius: 8, border: `2px solid ${todayLogs[doneKey] === 'true' ? COLORS.primary : COLORS.mist}`, background: todayLogs[doneKey] === 'true' ? COLORS.primary : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               {todayLogs[doneKey] === 'true' && <span style={{ color: COLORS.white, fontWeight: 700 }}>✓</span>}
             </div>
@@ -750,7 +864,7 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: COLORS.slate }}>Rounds:</span>
             {['1', '2', '3'].map(r => (
-              <button key={r} onClick={() => setLog(roundsKey, todayLogs[roundsKey] === r ? '' : r)} style={{
+              <button key={r} onClick={() => setWorkoutData(ex.name, 'rounds', todayLogs[roundsKey] === r ? '' : r)} style={{
                 width: 40, height: 36, borderRadius: 10, cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 15,
                 border: `2px solid ${todayLogs[roundsKey] === r ? COLORS.primary : COLORS.mist}`,
                 background: todayLogs[roundsKey] === r ? COLORS.primary : 'transparent',
@@ -761,12 +875,12 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
         )}
         {ex.logType === 'duration' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="number" placeholder="0" value={todayLogs[durKey] || ''} onChange={e => setLog(durKey, e.target.value)} onClick={e => e.stopPropagation()}
+            <input type="number" placeholder="0" value={todayLogs[durKey] || ''} onChange={e => setWorkoutData(ex.name, 'duration', e.target.value)} onClick={e => e.stopPropagation()}
               style={{ ...inputStyle, width: 70, padding: '6px 8px', fontSize: 14, textAlign: 'center' }} />
             <span style={{ fontSize: 13, color: COLORS.slate }}>minutes</span>
           </div>
         )}
-        <input type="text" placeholder="Notes (optional)" value={todayLogs[notesKey] || ''} onChange={e => setLog(notesKey, e.target.value)} onClick={e => e.stopPropagation()}
+        <input type="text" placeholder="Notes (optional)" value={todayLogs[notesKey] || ''} onChange={e => setWorkoutData(ex.name, 'notes', e.target.value)} onClick={e => e.stopPropagation()}
           style={{ ...inputStyle, fontSize: 13, padding: '8px 10px' }} />
       </div>
     )
@@ -805,9 +919,10 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
           <div style={{ ...cardStyle, borderColor: `${COLORS.primary}30` }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.ink, marginBottom: 12 }}>{todayWorkout.title}</div>
             {todayWorkout.exercises.map((ex, ei) => {
-              const lastSession = ex.noWeight ? null : getLastSessionData(ei)
-              const trend = ex.noWeight ? [] : getOverloadTrend(ei)
+              const lastSession = ex.noWeight ? null : getLastSessionData(ex.name)
+              const trend = ex.noWeight ? [] : getOverloadTrend(ex.name)
               const setCount = ex.noWeight ? 0 : (parseInt(ex.sets.charAt(0)) || 3)
+              const isLocked = todayLogs['locked'] === 'true'
 
               return (
                 <div key={ei} style={{ padding: '10px 0', borderTop: ei > 0 ? `1px solid ${COLORS.mist}` : 'none' }}>
@@ -852,24 +967,29 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
                   {ex.noWeight ? renderNoWeightExercise(ex, ei) : (
                     <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                       {Array.from({ length: setCount }).map((_, si) => {
-                        const wKey = `${ei}-${si}-w`
-                        const rKey = `${ei}-${si}-r`
+                        const sName = sanitizeExerciseName(ex.name)
+                        const wKey = `${sName}-${si}-w`
+                        const rKey = `${sName}-${si}-r`
                         const wVal = todayLogs[wKey] || ''
                         const rVal = todayLogs[rKey] || ''
-                        const setKey = `${ei}-${si}`
+                        const setKey = `${sName}-${si}`
                         const isSaved = savedSets[setKey]
                         return (
-                          <div key={si} style={{ display: 'flex', gap: 4, alignItems: 'center', background: isSaved ? `${COLORS.primary}08` : 'transparent', borderRadius: 8, padding: isSaved ? '2px 4px' : '2px 0', transition: 'background 0.2s' }}>
+                          <div key={si} style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap', background: isSaved ? `${COLORS.primary}08` : 'transparent', borderRadius: 8, padding: isSaved ? '2px 4px' : '2px 0', transition: 'background 0.2s' }}>
                             <span style={{ fontSize: 10, color: COLORS.slate, width: 16 }}>S{si + 1}</span>
-                            <input type="number" placeholder="lbs" value={wVal} onClick={e => e.stopPropagation()}
-                              onChange={e => setLog(wKey, e.target.value)}
-                              onBlur={() => { if (wVal.trim()) setSavedSets(p => ({ ...p, [setKey]: true })) }}
-                              style={{ ...inputStyle, width: 52, padding: '6px 8px', fontSize: 13, textAlign: 'center' }} />
-                            <input type="number" placeholder="reps" value={rVal} onClick={e => e.stopPropagation()}
-                              onChange={e => setLog(rKey, e.target.value)}
-                              onBlur={() => { if (rVal.trim()) setSavedSets(p => ({ ...p, [setKey]: true })) }}
-                              style={{ ...inputStyle, width: 48, padding: '6px 8px', fontSize: 13, textAlign: 'center' }} />
-                            {isSaved && <span style={{ fontSize: 13, color: COLORS.primary, fontWeight: 700, marginLeft: 2 }}>✓</span>}
+                            <input type="number" placeholder="lbs" value={wVal} readOnly={isLocked} onClick={e => e.stopPropagation()}
+                              onChange={e => setWorkoutData(ex.name, `${si}-w`, e.target.value)}
+                              onBlur={() => { if (wVal.trim() || rVal.trim()) setSavedSets(p => ({ ...p, [setKey]: true })) }}
+                              style={{ ...inputStyle, width: 52, padding: '6px 8px', fontSize: 13, textAlign: 'center', opacity: isLocked ? 0.6 : 1 }} />
+                            <input type="number" placeholder="reps" value={rVal} readOnly={isLocked} onClick={e => e.stopPropagation()}
+                              onChange={e => setWorkoutData(ex.name, `${si}-r`, e.target.value)}
+                              onBlur={() => { if (wVal.trim() || rVal.trim()) setSavedSets(p => ({ ...p, [setKey]: true })) }}
+                              style={{ ...inputStyle, width: 48, padding: '6px 8px', fontSize: 13, textAlign: 'center', opacity: isLocked ? 0.6 : 1 }} />
+                            {isSaved && (
+                              <span style={{ fontSize: 11, color: COLORS.primary, fontWeight: 600, marginLeft: 2, whiteSpace: 'nowrap' }}>
+                                {wVal && rVal ? `✓ ${wVal} lbs × ${rVal}` : '✓ saved'}
+                              </span>
+                            )}
                           </div>
                         )
                       })}
@@ -878,6 +998,55 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
                 </div>
               )
             })}
+          </div>
+
+          {/* Locked session header / Finish button */}
+          {todayLogs['locked'] === 'true' ? (
+            <div style={{ ...cardStyle, background: `${COLORS.primary}08`, border: `1px solid ${COLORS.primary}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.primary }}>🔒 Session Locked</span>
+              {!confirmingUnlock
+                ? <button onClick={() => setConfirmingUnlock(true)} style={{ fontSize: 12, color: COLORS.slate, background: COLORS.stone, border: `1px solid ${COLORS.mist}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: FONT }}>Unlock to Edit</button>
+                : <button onClick={() => { setLog('locked', ''); setConfirmingUnlock(false) }} style={{ fontSize: 12, color: '#dc2626', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: FONT }}>Tap again to confirm unlock</button>
+              }
+            </div>
+          ) : (
+            <button onClick={() => setShowFinishModal(true)} style={{ width: '100%', marginTop: 8, padding: '13px', borderRadius: 12, background: COLORS.primary, color: COLORS.white, border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>
+              ✅ Finish Workout
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Session summary modal */}
+      {showFinishModal && todayWorkout && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setShowFinishModal(false)}>
+          <div style={{ background: COLORS.white, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', width: '100%', maxWidth: 480, maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.ink, marginBottom: 16 }}>📋 Session Summary — {todayWorkout.day}</div>
+            {todayWorkout.exercises.map((ex, ei) => {
+              const sn = sanitizeExerciseName(ex.name)
+              const logs = data.workoutLogs[today()] || {}
+              if (ex.noWeight) {
+                const val = logs[`${sn}-rounds`] || logs[`${sn}-duration`] || (logs[`${sn}-done`] === 'true' ? '✓' : null)
+                if (!val) return null
+                return <div key={ei} style={{ fontSize: 13, color: COLORS.slate, padding: '6px 0', borderBottom: `1px solid ${COLORS.mist}` }}><strong style={{ color: COLORS.ink }}>{ex.name}</strong>: {val}</div>
+              }
+              const sets: string[] = []
+              for (let si = 0; si < 10; si++) {
+                const w = logs[`${sn}-${si}-w`]; const r = logs[`${sn}-${si}-r`]
+                if (w || r) sets.push(`S${si+1} ${w||'—'}×${r||'—'}`); else break
+              }
+              if (!sets.length) return null
+              return (
+                <div key={ei} style={{ padding: '8px 0', borderBottom: `1px solid ${COLORS.mist}` }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, marginBottom: 3 }}>{ex.name}</div>
+                  <div style={{ fontSize: 12, color: COLORS.slate }}>{sets.join('  ·  ')}</div>
+                </div>
+              )
+            })}
+            <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+              <button onClick={() => setShowFinishModal(false)} style={{ flex: 1, padding: 12, borderRadius: 12, background: COLORS.stone, color: COLORS.ink, border: `1px solid ${COLORS.mist}`, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: FONT }}>Back to Edit</button>
+              <button onClick={() => { setLog('locked', 'true'); setShowFinishModal(false) }} style={{ flex: 2, padding: 12, borderRadius: 12, background: COLORS.primary, color: COLORS.white, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: FONT }}>🔒 Lock Session</button>
+            </div>
           </div>
         </div>
       )}
@@ -963,18 +1132,19 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
                         {fmtDate(dateKey)} · {days[dow]}
                       </div>
                       {wd?.exercises.map((ex, ei) => {
+                        const sn = sanitizeExerciseName(ex.name)
                         if (ex.noWeight) {
-                          const done = logs[`${ei}-done`] || logs[`${ei}-rounds`] || logs[`${ei}-duration`]
+                          const done = logs[`${sn}-done`] || logs[`${sn}-rounds`] || logs[`${sn}-duration`]
                           if (!done) return null
                           return (
                             <div key={ei} style={{ fontSize: 12, color: COLORS.slate, marginBottom: 3 }}>
-                              {ex.name}: {logs[`${ei}-rounds`] ? `${logs[`${ei}-rounds`]} rounds` : logs[`${ei}-duration`] ? `${logs[`${ei}-duration`]} min` : '✓'}
+                              {ex.name}: {logs[`${sn}-rounds`] ? `${logs[`${sn}-rounds`]} rounds` : logs[`${sn}-duration`] ? `${logs[`${sn}-duration`]} min` : '✓'}
                             </div>
                           )
                         }
                         const sets: string[] = []
                         for (let si = 0; si < 10; si++) {
-                          const w = logs[`${ei}-${si}-w`]; const r = logs[`${ei}-${si}-r`]
+                          const w = logs[`${sn}-${si}-w`]; const r = logs[`${sn}-${si}-r`]
                           if (w || r) sets.push(`S${si+1} ${w||'—'}×${r||'—'}`); else break
                         }
                         if (!sets.length) return null
@@ -998,16 +1168,12 @@ function WorkoutTab({ data, updateData, expandedDay, setExpandedDay }: {
                 </select>
                 {selectedExercise && (() => {
                   const entries: { dateKey: string; sets: string[] }[] = []
+                  const sn = sanitizeExerciseName(selectedExercise)
                   historyDates.forEach(dateKey => {
-                    const dow = new Date(dateKey + 'T12:00:00').getDay()
-                    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
-                    const wd = WORKOUT_DAYS.find(w => w.day === days[dow])
-                    const ei = wd?.exercises.findIndex(e => e.name === selectedExercise) ?? -1
-                    if (ei < 0) return
                     const logs = data.workoutLogs[dateKey] || {}
                     const sets: string[] = []
                     for (let si = 0; si < 10; si++) {
-                      const w = logs[`${ei}-${si}-w`]; const r = logs[`${ei}-${si}-r`]
+                      const w = logs[`${sn}-${si}-w`]; const r = logs[`${sn}-${si}-r`]
                       if (w || r) sets.push(`S${si+1} ${w||'—'}×${r||'—'}`); else break
                     }
                     if (sets.length) entries.push({ dateKey, sets })
@@ -1556,7 +1722,7 @@ function PlanTab() {
 
   const sections: { key: string; title: string; content: string }[] = [
     { key: 'goal', title: 'Program Goal', content: '91-day body recomposition: reduce body fat from ~18% to 12–14% while maintaining or increasing lean mass. Target weight: 213–218 lbs by June 21, 2026.' },
-    { key: 'injury', title: 'Injury Protocol', content: 'Right shoulder labral tear, 90–95% recovered.\n\n• No barbell overhead press\n• No upright rows\n• No behind-the-neck movements\n• All lateral raises at slight forward angle\n• PT every Wednesday — non-negotiable\n• If PT skipped 3+ days → drop 1 set from all pressing that week\n\nSHOULDER RESTRUCTURE — Week 2: Sharp pain reported in right shoulder (previously torn labrum). Wednesday direct shoulder work removed entirely. Lateral raises reduced from 7 sets to 3 sets/week, moved to Friday. Face pulls moved to Thursday. Phase II overhead pressing pushed from Week 5 to Week 9 minimum, conditional on 3+ consecutive pain-free weeks. If sharp pain recurs, stop aggravating movement immediately and reduce lateral raise weight by 50% the following week.' },
+    { key: 'injury', title: 'Injury Protocol', content: 'Right shoulder labral tear, 90–95% recovered.\n\n• No barbell overhead press\n• No upright rows\n• No behind-the-neck movements\n• All lateral raises at slight forward angle\n• PT every Wednesday — non-negotiable\n• If PT skipped 3+ days → drop 1 set from all pressing that week\n\nSHOULDER RESTRUCTURE — Week 2: Sharp pain reported in right shoulder (previously torn labrum). Wednesday direct shoulder work removed entirely. Lateral raises reduced from 7 sets to 3 sets/week, moved to Friday. Cable Face Pulls removed from Thursday — covered during Wednesday PT/rehab session; redundant direct volume on an actively rehabbed shoulder is unnecessary. Phase II overhead pressing pushed from Week 5 to Week 9 minimum, conditional on 3+ consecutive pain-free weeks. If sharp pain recurs, stop aggravating movement immediately and reduce lateral raise weight by 50% the following week.' },
     { key: 'overload', title: 'Progressive Overload', content: '• Dumbbells: +2.5–5 lbs\n• Cables: +5 lbs\n• Barbell: +5 lbs\n• Lateral raises: +2.5 lbs only\n• Overhead press: +2.5–5 lbs in Phase II–III\n• Log every set — no guessing' },
     { key: 'deload', title: 'Deload Schedule', content: '40–50% volume reduction at the end of Week 8, before Phase III begins. Maintain intensity, reduce sets.' },
     { key: 'recovery', title: 'Recovery Stack', content: '• Magnesium glycinate 200–400mg, 30–60 min before bed\n• Electrolytes on leg days and Wednesdays\n• Coconut water daily' },
